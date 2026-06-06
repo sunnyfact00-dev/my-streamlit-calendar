@@ -75,7 +75,7 @@ def render_calendar(year, month):
 
             html += f'<td{td_class}><div class="day-num" style="{day_style}">{day}</div>'
 
-            # 현재 달력의 연도/월과 일치하는 기간 일정 렌더링
+            # 기간 일정 렌더링
             for p_idx, p_event in enumerate(st.session_state.my_period_events):
                 if p_event.get("year") == year and p_event.get("month") == month:
                     if p_event["start"] <= day <= p_event["end"]:
@@ -90,7 +90,7 @@ def render_calendar(year, month):
                         else:
                             html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
 
-            # 현재 달력의 연도/월과 일치하는 일반 일정 렌더링
+            # 일반 일정 렌더링
             for d_event in st.session_state.my_daily_events:
                 if d_event.get("year") == year and d_event.get("month") == month:
                     if d_event["day"] == day:
@@ -139,20 +139,16 @@ period_items = [e for e in st.session_state.my_period_events if e.get("year") ==
 if not daily_items and not period_items:
     st.info("이 달에 등록된 일정이 없습니다. 아래에서 일정을 추가해 보세요!")
 else:
-    # 2열 격자 형태로 깔끔하게 체크박스 리스트 배치
     t_col1, t_col2 = st.columns(2)
 
-    # 일반 일정 토글 출력
     for idx, item in enumerate(daily_items):
         target_col = t_col1 if idx % 2 == 0 else t_col2
         with target_col:
-            # key값을 유니크하게 주기 위해 고유 ID 조합 사용
             new_val = st.checkbox(f"[일반] {item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{item['day']}_{idx}")
             if new_val != item["completed"]:
                 item["completed"] = new_val
                 st.rerun()
 
-    # 기간 일정 토글 출력
     for idx, item in enumerate(period_items):
         target_col = t_col1 if idx % 2 == 0 else t_col2
         with target_col:
@@ -164,24 +160,23 @@ else:
 st.divider()
 
 # -------------------------------------------------------------
-# 6. 새 일정 등록 영역 (Form 컴포넌트)
+# 6. 새 일정 등록 영역 (실시간 반응을 위해 선택상자를 Form 밖으로 배치)
 # -------------------------------------------------------------
 st.subheader("➕ 새 일정 등록하기")
 
-# 유동적인 날짜 입력을 위해 해당 월의 마지막 날 자동 계산
 _, last_day = calendar.monthrange(selected_year, selected_month)
 
-with st.form(key='event_form', clear_on_submit=True):
-    col_iy, col_im, col_type = st.columns([1, 1, 2])
-    with col_iy:
-        # 기본값은 현재 조회 중인 연도로 동기화
-        in_year = st.selectbox("등록 연도", list(range(2020, 2031)), index=list(range(2020, 2031)).index(selected_year))
-    with col_im:
-        # 기본값은 현재 조회 중인 월로 동기화
-        in_month = st.selectbox("등록 월", list(range(1, 13)), index=selected_month - 1)
-    with col_type:
-        type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
+# [수정 핵심] 실시간 리렌더링을 위해 일정 종류 선택을 Form 외부(위쪽)로 뺐습니다.
+col_iy, col_im, col_type = st.columns([1, 1, 2])
+with col_iy:
+    in_year = st.selectbox("등록 연도", list(range(2020, 2031)), index=list(range(2020, 2031)).index(selected_year))
+with col_im:
+    in_month = st.selectbox("등록 월", list(range(1, 13)), index=selected_month - 1)
+with col_type:
+    type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
 
+# 실제 입력 폼 시작
+with st.form(key='event_form', clear_on_submit=True):
     title_input = st.text_input('일정 제목', placeholder='일정 제목을 입력하세요')
 
     col_s, col_e, col_c = st.columns([2, 2, 1])
@@ -189,6 +184,7 @@ with st.form(key='event_form', clear_on_submit=True):
         start_label = '날짜(시작일)' if type_select == '기간 일정' else '날짜'
         start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
     with col_e:
+        # 이제 외부 선택상자 변경에 따라 종료일 칸이 즉시 활성화/비활성화됩니다!
         if type_select == '기간 일정':
             end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=int(start_input))
         else:
