@@ -129,44 +129,62 @@ with col_reset:
 st.divider()
 
 # -------------------------------------------------------------
-# 5. 실시간 일정 완료 여부 토글(체크박스) 영역
+# 5. 실시간 일정 관리 (토글 및 개별 삭제) 영역
 # -------------------------------------------------------------
-st.subheader(f"✅ {selected_year}년 {selected_month}월 일정 토글 관리")
+st.subheader(f"✅ {selected_year}년 {selected_month}월 일정 편집 및 관리")
 
-daily_items = [e for e in st.session_state.my_daily_events if e.get("year") == selected_year and e.get("month") == selected_month]
-period_items = [e for e in st.session_state.my_period_events if e.get("year") == selected_year and e.get("month") == selected_month]
+# 원본 리스트에서 해당 월의 아이템과 원래 인덱스를 함께 추출
+daily_items = [(idx, e) for idx, e in enumerate(st.session_state.my_daily_events) if e.get("year") == selected_year and e.get("month") == selected_month]
+period_items = [(idx, e) for idx, e in enumerate(st.session_state.my_period_events) if e.get("year") == selected_year and e.get("month") == selected_month]
 
 if not daily_items and not period_items:
     st.info("이 달에 등록된 일정이 없습니다. 아래에서 일정을 추가해 보세요!")
 else:
-    t_col1, t_col2 = st.columns(2)
+    # 일반 일정 출력 및 삭제
+    if daily_items:
+        st.markdown("**📌 일반 일정**")
+        for orig_idx, item in daily_items:
+            # 체크박스와 삭제 버튼을 한 줄에 배치하기 위해 컬럼 나누기
+            c1, c2 = st.columns([5, 1])
+            with c1:
+                new_val = st.checkbox(f"{item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{orig_idx}")
+                if new_val != item["completed"]:
+                    st.session_state.my_daily_events[orig_idx]["completed"] = new_val
+                    st.rerun()
+            with c2:
+                if st.button("🗑 삭제", key=f"del_d_{orig_idx}", use_container_width=True, type="secondary"):
+                    st.session_state.my_daily_events.pop(orig_idx)
+                    st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
+                    st.rerun()
 
-    for idx, item in enumerate(daily_items):
-        target_col = t_col1 if idx % 2 == 0 else t_col2
-        with target_col:
-            new_val = st.checkbox(f"[일반] {item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{item['day']}_{idx}")
-            if new_val != item["completed"]:
-                item["completed"] = new_val
-                st.rerun()
+    # 간격 조정을 위한 공백
+    if daily_items and period_items: st.write("")
 
-    for idx, item in enumerate(period_items):
-        target_col = t_col1 if idx % 2 == 0 else t_col2
-        with target_col:
-            new_val = st.checkbox(f"[기간] {item['start']}일~{item['end']}일 - {item['title']}", value=item["completed"], key=f"chk_p_{item['start']}_{idx}")
-            if new_val != item["completed"]:
-                item["completed"] = new_val
-                st.rerun()
+    # 기간 일정 출력 및 삭제
+    if period_items:
+        st.markdown("**⏳ 기간 일정**")
+        for orig_idx, item in period_items:
+            c1, c2 = st.columns([5, 1])
+            with c1:
+                new_val = st.checkbox(f"{item['start']}일 ~ {item['end']}일 - {item['title']}", value=item["completed"], key=f"chk_p_{orig_idx}")
+                if new_val != item["completed"]:
+                    st.session_state.my_period_events[orig_idx]["completed"] = new_val
+                    st.rerun()
+            with c2:
+                if st.button("🗑 삭제", key=f"del_p_{orig_idx}", use_container_width=True, type="secondary"):
+                    st.session_state.my_period_events.pop(orig_idx)
+                    st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
+                    st.rerun()
 
 st.divider()
 
 # -------------------------------------------------------------
-# 6. 새 일정 등록 영역 (실시간 반응을 위해 선택상자를 Form 밖으로 배치)
+# 6. 새 일정 등록 영역 (Form 컴포넌트)
 # -------------------------------------------------------------
 st.subheader("➕ 새 일정 등록하기")
 
 _, last_day = calendar.monthrange(selected_year, selected_month)
 
-# [수정 핵심] 실시간 리렌더링을 위해 일정 종류 선택을 Form 외부(위쪽)로 뺐습니다.
 col_iy, col_im, col_type = st.columns([1, 1, 2])
 with col_iy:
     in_year = st.selectbox("등록 연도", list(range(2020, 2031)), index=list(range(2020, 2031)).index(selected_year))
@@ -175,7 +193,6 @@ with col_im:
 with col_type:
     type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
 
-# 실제 입력 폼 시작
 with st.form(key='event_form', clear_on_submit=True):
     title_input = st.text_input('일정 제목', placeholder='일정 제목을 입력하세요')
 
@@ -184,7 +201,6 @@ with st.form(key='event_form', clear_on_submit=True):
         start_label = '날짜(시작일)' if type_select == '기간 일정' else '날짜'
         start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
     with col_e:
-        # 이제 외부 선택상자 변경에 따라 종료일 칸이 즉시 활성화/비활성화됩니다!
         if type_select == '기간 일정':
             end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=int(start_input))
         else:
