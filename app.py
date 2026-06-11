@@ -1,9 +1,10 @@
 import calendar
 from datetime import datetime
 import streamlit as st
+import uuid  # 고유 ID 생성을 위한 모듈 추가
 
 # 페이지 설정 (넓은 화면 모드)
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너")
 
 # -------------------------------------------------------------
 # 1. 글로벌 데이터 저장소 (Streamlit Session State 이용)
@@ -38,17 +39,17 @@ def render_calendar(year, month):
     style = """
     <style>
         .cal-table { border-collapse: collapse; width: 100%; font-family: 'Malgun Gothic', sans-serif; table-layout: fixed; margin-top: 15px;}
-        .cal-table th, .cal-table td { border: 1px solid #e0e0e0; vertical-align: top; padding: 5px; height: 110px; }
-        .cal-header { font-size: 22px; font-weight: bold; text-align: center; margin-top: 10px; color: #333; }
+        .cal-table th, .cal-table td { border: 1px solid #e0e0e0; vertical-align: top; padding: 5px; height: 120px; }
+        .cal-header { font-size: 24px; font-weight: bold; text-align: center; margin-top: 10px; color: #333; }
         .th-sun { color: red; text-align: center; font-weight: bold; background: #fafafa; }
         .th-sat { color: blue; text-align: center; font-weight: bold; background: #fafafa; }
         .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; }
         .day-num { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
         .today-box { background-color: #FFF9C4 !important; border: 2px solid #FBC02D !important; }
-        .event-completed { color: #2E7D32; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .event-completed { color: #9E9E9E; text-decoration: line-through; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
         .event-pending { color: #424242; font-size: 12px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 16px; line-height: 16px; }
-        .period-box-empty { height: 22px; margin-bottom: 2px; border-radius: 3px; }
+        .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 18px; line-height: 18px; }
+        .period-box-empty { height: 18px; margin-bottom: 2px; border-radius: 3px; font-size: 11px; padding: 3px 5px; line-height: 18px; opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
     </style>
     """
 
@@ -86,18 +87,20 @@ def render_calendar(year, month):
 
                         if day == p_event["start"]:
                             display_title = f"✓ {p_event['title']}" if p_event["completed"] else p_event["title"]
-                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};">{display_title}</div>'
+                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
                         else:
-                            html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
+                            # 이어지는 날에도 연하게 글자를 보방하여 가독성 업그레이드
+                            display_title = f"→ {p_event['title']}"
+                            html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
 
             # 일반 일정 렌더링
             for d_event in st.session_state.my_daily_events:
                 if d_event.get("year") == year and d_event.get("month") == month:
                     if d_event["day"] == day:
                         if d_event["completed"]:
-                            html += f'<div class="event-completed">✓ {d_event["title"]}</div>'
+                            html += f'<div class="event-completed" title="{d_event["title"]}">✓ {d_event["title"]}</div>'
                         else:
-                            html += f'<div class="event-pending">· {d_event["title"]}</div>'
+                            html += f'<div class="event-pending" title="{d_event["title"]}">· {d_event["title"]}</div>'
 
             html += '</td>'
         html += '</tr>'
@@ -133,9 +136,9 @@ st.divider()
 # -------------------------------------------------------------
 st.subheader(f"✅ {selected_year}년 {selected_month}월 일정 편집 및 관리")
 
-# 원본 리스트에서 해당 월의 아이템과 원래 인덱스를 함께 추출
-daily_items = [(idx, e) for idx, e in enumerate(st.session_state.my_daily_events) if e.get("year") == selected_year and e.get("month") == selected_month]
-period_items = [(idx, e) for idx, e in enumerate(st.session_state.my_period_events) if e.get("year") == selected_year and e.get("month") == selected_month]
+# 필터링 대상 리스트 추출 (id 또는 객체 자체를 매핑)
+daily_items = [e for e in st.session_state.my_daily_events if e.get("year") == selected_year and e.get("month") == selected_month]
+period_items = [e for e in st.session_state.my_period_events if e.get("year") == selected_year and e.get("month") == selected_month]
 
 if not daily_items and not period_items:
     st.info("이 달에 등록된 일정이 없습니다. 아래에서 일정을 추가해 보세요!")
@@ -143,43 +146,42 @@ else:
     # 일반 일정 출력 및 삭제
     if daily_items:
         st.markdown("**📌 일반 일정**")
-        for orig_idx, item in daily_items:
-            # 체크박스와 삭제 버튼을 한 줄에 배치하기 위해 컬럼 나누기
+        for item in daily_items:
             c1, c2 = st.columns([5, 1])
             with c1:
-                new_val = st.checkbox(f"{item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{orig_idx}")
+                new_val = st.checkbox(f"{item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{item['id']}")
                 if new_val != item["completed"]:
-                    st.session_state.my_daily_events[orig_idx]["completed"] = new_val
+                    item["completed"] = new_val
                     st.rerun()
             with c2:
-                if st.button("🗑 삭제", key=f"del_d_{orig_idx}", use_container_width=True, type="secondary"):
-                    st.session_state.my_daily_events.pop(orig_idx)
+                # pop(idx) 대신 리스트에서 객체를 직접 안전하게 remove
+                if st.button("🗑 삭제", key=f"del_d_{item['id']}", use_container_width=True, type="secondary"):
+                    st.session_state.my_daily_events.remove(item)
                     st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
                     st.rerun()
 
-    # 간격 조정을 위한 공백
     if daily_items and period_items: st.write("")
 
     # 기간 일정 출력 및 삭제
     if period_items:
         st.markdown("**⏳ 기간 일정**")
-        for orig_idx, item in period_items:
+        for item in period_items:
             c1, c2 = st.columns([5, 1])
             with c1:
-                new_val = st.checkbox(f"{item['start']}일 ~ {item['end']}일 - {item['title']}", value=item["completed"], key=f"chk_p_{orig_idx}")
+                new_val = st.checkbox(f"{item['start']}일 ~ {item['end']}일 - {item['title']}", value=item["completed"], key=f"chk_p_{item['id']}")
                 if new_val != item["completed"]:
-                    st.session_state.my_period_events[orig_idx]["completed"] = new_val
+                    item["completed"] = new_val
                     st.rerun()
             with c2:
-                if st.button("🗑 삭제", key=f"del_p_{orig_idx}", use_container_width=True, type="secondary"):
-                    st.session_state.my_period_events.pop(orig_idx)
+                if st.button("🗑 삭제", key=f"del_p_{item['id']}", use_container_width=True, type="secondary"):
+                    st.session_state.my_period_events.remove(item)
                     st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
                     st.rerun()
 
 st.divider()
 
 # -------------------------------------------------------------
-# 6. 새 일정 등록 영역 (Form 컴포넌트)
+# 6. 새 일정 등록 영역 (Form 구조 수정)
 # -------------------------------------------------------------
 st.subheader("➕ 새 일정 등록하기")
 
@@ -191,6 +193,7 @@ with col_iy:
 with col_im:
     in_month = st.selectbox("등록 월", list(range(1, 13)), index=selected_month - 1)
 with col_type:
+    # Form 외부에 두어 사용자가 선택 시 즉시 하단 입력폼 컴포넌트가 반응하도록 함
     type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
 
 with st.form(key='event_form', clear_on_submit=True):
@@ -220,29 +223,13 @@ with st.form(key='event_form', clear_on_submit=True):
         elif type_select == '기간 일정' and start_input > end_input:
             st.error("⚠ 시작일이 종료일보다 늦을 수 없습니다.")
         else:
+            # 안전한 조작을 위해 고유 uuid 생성하여 딕셔너리에 추가
+            event_id = str(uuid.uuid4())
+            
             if type_select == '일반 일정(하루)':
                 st.session_state.my_daily_events.append({
+                    "id": event_id,
                     "year": in_year,
                     "month": in_month,
                     "day": int(start_input),
                     "title": title,
-                    "completed": completed_check
-                })
-            else:
-                st.session_state.my_period_events.append({
-                    "year": in_year,
-                    "month": in_month,
-                    "start": int(start_input),
-                    "end": int(end_input),
-                    "title": title,
-                    "completed": completed_check
-                })
-            st.toast("일정이 성공적으로 추가되었습니다!")
-            st.rerun()
-
-st.divider()
-
-# -------------------------------------------------------------
-# 7. 메인 달력 출력
-# -------------------------------------------------------------
-render_calendar(selected_year, selected_month)
