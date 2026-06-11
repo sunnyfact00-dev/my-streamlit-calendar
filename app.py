@@ -90,5 +90,35 @@ def render_calendar(year, month):
                         else:
                             html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
 
-            # 일반 일정 렌더링
-            for d_event in st.session_state.
+            # 일반 일정 렌더링 (이 부분이 잘려 있었습니다, 완벽 복구 완료!)
+            for d_event in st.session_state.my_daily_events:
+                if d_event.get("year") == year and d_event.get("month") == month:
+                    if d_event["day"] == day:
+                        if d_event["completed"]:
+                            html += f'<div class="event-completed">✓ {d_event["title"]}</div>'
+                        else:
+                            html += f'<div class="event-pending">· {d_event["title"]}</div>'
+
+            html += '</td>'
+        html += '</tr>'
+    html += '</table>'
+
+    st.markdown(html, unsafe_allow_html=True)
+
+# -------------------------------------------------------------
+# 4. 상단 대시보드 및 조회 제어 영역
+# -------------------------------------------------------------
+st.title("📆 스마트 일정 관리 플래너")
+
+col_year, col_month, col_reset = st.columns([2, 2, 2])
+
+with col_year:
+    selected_year = st.selectbox("📅 조회 연도", list(range(2020, 2031)), index=6) # 기본값 2026
+
+with col_month:
+    selected_month = st.selectbox("📆 조회 월", list(range(1, 13)), index=5) # 기본값 6
+
+with col_reset:
+    st.write("<div style='padding-top: 24px;'></div>", unsafe_allow_html=True)
+    if st.button("🗑 모든 일정 초기화", type="secondary", use_container_width=True):
+        st.session_state.my_period_
