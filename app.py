@@ -3,7 +3,7 @@ from datetime import datetime
 import streamlit as st
 
 # 페이지 설정 (넓은 화면 모드)
-st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너", page_icon="📆")
+st.set_page_config(layout="wide")
 
 # -------------------------------------------------------------
 # 1. 글로벌 데이터 저장소 (Streamlit Session State 이용)
@@ -45,7 +45,7 @@ def render_calendar(year, month):
         .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; }
         .day-num { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
         .today-box { background-color: #FFF9C4 !important; border: 2px solid #FBC02D !important; }
-        .event-completed { color: #81C784; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-decoration: line-through;}
+        .event-completed { color: #2E7D32; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
         .event-pending { color: #424242; font-size: 12px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
         .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 16px; line-height: 16px; }
         .period-box-empty { height: 22px; margin-bottom: 2px; border-radius: 3px; }
@@ -86,26 +86,9 @@ def render_calendar(year, month):
 
                         if day == p_event["start"]:
                             display_title = f"✓ {p_event['title']}" if p_event["completed"] else p_event["title"]
-                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
+                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};">{display_title}</div>'
                         else:
                             html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
 
             # 일반 일정 렌더링
-            for d_event in st.session_state.my_daily_events:
-                if d_event.get("year") == year and d_event.get("month") == month:
-                    if d_event["day"] == day:
-                        if d_event["completed"]:
-                            html += f'<div class="event-completed" title="{d_event["title"]}">✓ {d_event["title"]}</div>'
-                        else:
-                            html += f'<div class="event-pending" title="{d_event["title"]}">· {d_event["title"]}</div>'
-
-            html += '</td>'
-        html += '</tr>'
-    html += '</table>'
-
-    st.markdown(html, unsafe_allow_html=True)
-
-# -------------------------------------------------------------
-# 4. 상단 대시보드 및 조회 제어 영역
-# -------------------------------------------------------------
-st.title("📆 스마트
+            for d_event in st.session_state.
