@@ -1,7 +1,7 @@
 import calendar
 from datetime import datetime
 import streamlit as st
-import uuid  # 고유 ID 생성을 위한 모듈 추가
+import uuid
 
 # 페이지 설정 (넓은 화면 모드)
 st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너")
@@ -10,69 +10,73 @@ st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너"
 # 1. 글로벌 데이터 저장소 (Streamlit Session State 이용)
 # -------------------------------------------------------------
 if 'my_period_events' not in st.session_state:
-    st.session_state.my_period_events = []  # 기간 일정 저장소
+    st.session_state.my_period_events = []
 
 if 'my_daily_events' not in st.session_state:
-    st.session_state.my_daily_events = []   # 일반 일정 저장소
+    st.session_state.my_daily_events = []
 
 # -------------------------------------------------------------
 # 2. 색상 팔레트 정의 (기간별 구분을 위한 파스텔톤 7종)
 # -------------------------------------------------------------
 PERIOD_COLORS = [
-    {"bg": "#E3F2FD", "text": "#0D47A1"},  # 블루
-    {"bg": "#E8F5E9", "text": "#1B5E20"},  # 그린
-    {"bg": "#FFF3E0", "text": "#E65100"},  # 오렌지
-    {"bg": "#F3E5F5", "text": "#4A148C"},  # 퍼플
-    {"bg": "#FCE4EC", "text": "#880E4F"},  # 핑크
-    {"bg": "#E0F7FA", "text": "#006064"},  # 시안
-    {"bg": "#FFFDE7", "text": "#F57F17"}   # 옐로우
+    {"bg": "#E3F2FD", "text": "#0D47A1"},
+    {"bg": "#E8F5E9", "text": "#1B5E20"},
+    {"bg": "#FFF3E0", "text": "#E65100"},
+    {"bg": "#F3E5F5", "text": "#4A148C"},
+    {"bg": "#FCE4EC", "text": "#880E4F"},
+    {"bg": "#E0F7FA", "text": "#006064"},
+    {"bg": "#FFFDE7", "text": "#F57F17"}
 ]
 
 COMPLETED_COLOR = {"bg": "#ECEFF1", "text": "#546E7A"}
 
 # -------------------------------------------------------------
-# 3. 달력 렌더링 함수
+# 3. 달력 렌더링 함수 (CSS 호환성 강화 버전)
 # -------------------------------------------------------------
 def render_calendar(year, month):
     now = datetime.now()
 
+    # 호환성을 위해 폰트 지정을 안전하게 바꾸고 테이블이 깨지지 않도록 보완
     style = """
     <style>
-        .cal-table { border-collapse: collapse; width: 100%; font-family: 'Malgun Gothic', sans-serif; table-layout: fixed; margin-top: 15px;}
-        .cal-table th, .cal-table td { border: 1px solid #e0e0e0; vertical-align: top; padding: 5px; height: 120px; }
-        .cal-header { font-size: 24px; font-weight: bold; text-align: center; margin-top: 10px; color: #333; }
-        .th-sun { color: red; text-align: center; font-weight: bold; background: #fafafa; }
-        .th-sat { color: blue; text-align: center; font-weight: bold; background: #fafafa; }
-        .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; }
-        .day-num { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
-        .today-box { background-color: #FFF9C4 !important; border: 2px solid #FBC02D !important; }
-        .event-completed { color: #9E9E9E; text-decoration: line-through; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .event-pending { color: #424242; font-size: 12px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 18px; line-height: 18px; }
-        .period-box-empty { height: 18px; margin-bottom: 2px; border-radius: 3px; font-size: 11px; padding: 3px 5px; line-height: 18px; opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+        .cal-wrapper { width: 100%; margin-top: 20px; margin-bottom: 20px; }
+        .cal-table { border-collapse: collapse; width: 100%; table-layout: fixed; background-color: #ffffff; }
+        .cal-table th, .cal-table td { border: 1px solid #dee2e6; vertical-align: top; padding: 8px; height: 120px; }
+        .cal-header { font-size: 26px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #212529; }
+        .th-sun { color: #dc3545; text-align: center; font-weight: bold; background: #f8f9fa; }
+        .th-sat { color: #0d6efd; text-align: center; font-weight: bold; background: #f8f9fa; }
+        .th-week { color: #212529; text-align: center; font-weight: bold; background: #f8f9fa; }
+        .day-num { font-weight: bold; font-size: 15px; margin-bottom: 8px; color: #212529; }
+        .today-box { background-color: #fff3cd !important; border: 2px solid #ffc107 !important; }
+        .event-completed { color: #6c757d; text-decoration: line-through; font-size: 12px; margin-top: 4px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .event-pending { color: #212529; font-size: 12px; margin-top: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .period-box { font-size: 11px; padding: 4px 6px; margin-bottom: 3px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 20px; line-height: 12px; }
+        .period-box-empty { height: 20px; margin-bottom: 3px; border-radius: 4px; font-size: 11px; padding: 4px 6px; line-height: 12px; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
     </style>
     """
 
     cal = calendar.Calendar(firstweekday=6)
     month_days = cal.monthdayscalendar(year, month)
 
-    html = f'{style}<div class="cal-header">📅 {year}년 {month}월 캘린더</div>'
+    html = f'{style}<div class="cal-wrapper">'
+    html += f'<div class="cal-header">📅 {year}년 {month}월 캘린더</div>'
     html += '<table class="cal-table">'
-    html += '<tr><th class="th-sun">일</th><th class="th-week">월</th><th class="th-week">화</th><th class="th-week">수</th><th class="th-week">목</th><th class="th-week">금</th><th class="th-sat">토</th></tr>'
+    html += '<thead><tr><th class="th-sun">일</th><th class="th-week">월</th><th class="th-week">화</th><th class="th-week">수</th><th class="th-week">목</th><th class="th-week">금</th><th class="th-sat">토</th></tr></thead>'
+    html += '<tbody>'
 
     for week in month_days:
         html += '<tr>'
         for idx, day in enumerate(week):
             if day == 0:
-                html += '<td style="background:#f9f9f9;"></td>'
+                html += '<td style="background-color:#f8f9fa;"></td>'
                 continue
 
             is_today = (year == now.year and month == now.month and day == now.day)
             td_class = ' class="today-box"' if is_today else ''
 
             day_style = ""
-            if idx == 0: day_style = "color: red;"
-            elif idx == 6: day_style = "color: blue;"
+            if idx == 0: day_style = "color: #dc3545;"
+            elif idx == 6: day_style = "color: #0d6efd;"
 
             html += f'<td{td_class}><div class="day-num" style="{day_style}">{day}</div>'
 
@@ -103,7 +107,8 @@ def render_calendar(year, month):
 
             html += '</td>'
         html += '</tr>'
-    html += '</table>'
+    
+    html += '</tbody></table></div>'
 
     st.markdown(html, unsafe_allow_html=True)
 
@@ -125,4 +130,10 @@ with col_reset:
     st.write("<div style='padding-top: 24px;'></div>", unsafe_allow_html=True)
     if st.button("🗑 모든 일정 초기화", type="secondary", use_container_width=True):
         st.session_state.my_period_events = []
-        st.session_
+        st.session_state.my_daily_events = []
+        st.toast("모든 일정이 초기화되었습니다!")
+        st.rerun()
+
+st.divider()
+
+# 무조건 강제로 먼저
