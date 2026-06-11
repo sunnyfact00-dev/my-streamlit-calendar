@@ -3,7 +3,7 @@ from datetime import datetime
 import streamlit as st
 
 # 페이지 설정 (넓은 화면 모드)
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너", page_icon="📆")
 
 # -------------------------------------------------------------
 # 1. 글로벌 데이터 저장소 (Streamlit Session State 이용)
@@ -45,7 +45,7 @@ def render_calendar(year, month):
         .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; }
         .day-num { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
         .today-box { background-color: #FFF9C4 !important; border: 2px solid #FBC02D !important; }
-        .event-completed { color: #2E7D32; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .event-completed { color: #81C784; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-decoration: line-through;}
         .event-pending { color: #424242; font-size: 12px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
         .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 16px; line-height: 16px; }
         .period-box-empty { height: 22px; margin-bottom: 2px; border-radius: 3px; }
@@ -86,7 +86,7 @@ def render_calendar(year, month):
 
                         if day == p_event["start"]:
                             display_title = f"✓ {p_event['title']}" if p_event["completed"] else p_event["title"]
-                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};">{display_title}</div>'
+                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
                         else:
                             html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
 
@@ -95,9 +95,9 @@ def render_calendar(year, month):
                 if d_event.get("year") == year and d_event.get("month") == month:
                     if d_event["day"] == day:
                         if d_event["completed"]:
-                            html += f'<div class="event-completed">✓ {d_event["title"]}</div>'
+                            html += f'<div class="event-completed" title="{d_event["title"]}">✓ {d_event["title"]}</div>'
                         else:
-                            html += f'<div class="event-pending">· {d_event["title"]}</div>'
+                            html += f'<div class="event-pending" title="{d_event["title"]}">· {d_event["title"]}</div>'
 
             html += '</td>'
         html += '</tr>'
@@ -108,141 +108,4 @@ def render_calendar(year, month):
 # -------------------------------------------------------------
 # 4. 상단 대시보드 및 조회 제어 영역
 # -------------------------------------------------------------
-st.title("📆 스마트 일정 관리 플래너")
-
-col_year, col_month, col_reset = st.columns([2, 2, 2])
-
-with col_year:
-    selected_year = st.selectbox("📅 조회 연도", list(range(2020, 2031)), index=6) # 기본값 2026
-
-with col_month:
-    selected_month = st.selectbox("📆 조회 월", list(range(1, 13)), index=5) # 기본값 6
-
-with col_reset:
-    st.write("<div style='padding-top: 24px;'></div>", unsafe_allow_html=True)
-    if st.button("🗑 모든 일정 초기화", type="secondary", use_container_width=True):
-        st.session_state.my_period_events = []
-        st.session_state.my_daily_events = []
-        st.toast("모든 일정이 초기화되었습니다!")
-        st.rerun()
-
-st.divider()
-
-# -------------------------------------------------------------
-# 5. 실시간 일정 관리 (토글 및 개별 삭제) 영역
-# -------------------------------------------------------------
-st.subheader(f"✅ {selected_year}년 {selected_month}월 일정 편집 및 관리")
-
-# 원본 리스트에서 해당 월의 아이템과 원래 인덱스를 함께 추출
-daily_items = [(idx, e) for idx, e in enumerate(st.session_state.my_daily_events) if e.get("year") == selected_year and e.get("month") == selected_month]
-period_items = [(idx, e) for idx, e in enumerate(st.session_state.my_period_events) if e.get("year") == selected_year and e.get("month") == selected_month]
-
-if not daily_items and not period_items:
-    st.info("이 달에 등록된 일정이 없습니다. 아래에서 일정을 추가해 보세요!")
-else:
-    # 일반 일정 출력 및 삭제
-    if daily_items:
-        st.markdown("**📌 일반 일정**")
-        for orig_idx, item in daily_items:
-            # 체크박스와 삭제 버튼을 한 줄에 배치하기 위해 컬럼 나누기
-            c1, c2 = st.columns([5, 1])
-            with c1:
-                new_val = st.checkbox(f"{item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{orig_idx}")
-                if new_val != item["completed"]:
-                    st.session_state.my_daily_events[orig_idx]["completed"] = new_val
-                    st.rerun()
-            with c2:
-                if st.button("🗑 삭제", key=f"del_d_{orig_idx}", use_container_width=True, type="secondary"):
-                    st.session_state.my_daily_events.pop(orig_idx)
-                    st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
-                    st.rerun()
-
-    # 간격 조정을 위한 공백
-    if daily_items and period_items: st.write("")
-
-    # 기간 일정 출력 및 삭제
-    if period_items:
-        st.markdown("**⏳ 기간 일정**")
-        for orig_idx, item in period_items:
-            c1, c2 = st.columns([5, 1])
-            with c1:
-                new_val = st.checkbox(f"{item['start']}일 ~ {item['end']}일 - {item['title']}", value=item["completed"], key=f"chk_p_{orig_idx}")
-                if new_val != item["completed"]:
-                    st.session_state.my_period_events[orig_idx]["completed"] = new_val
-                    st.rerun()
-            with c2:
-                if st.button("🗑 삭제", key=f"del_p_{orig_idx}", use_container_width=True, type="secondary"):
-                    st.session_state.my_period_events.pop(orig_idx)
-                    st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
-                    st.rerun()
-
-st.divider()
-
-# -------------------------------------------------------------
-# 6. 새 일정 등록 영역 (Form 컴포넌트)
-# -------------------------------------------------------------
-st.subheader("➕ 새 일정 등록하기")
-
-_, last_day = calendar.monthrange(selected_year, selected_month)
-
-col_iy, col_im, col_type = st.columns([1, 1, 2])
-with col_iy:
-    in_year = st.selectbox("등록 연도", list(range(2020, 2031)), index=list(range(2020, 2031)).index(selected_year))
-with col_im:
-    in_month = st.selectbox("등록 월", list(range(1, 13)), index=selected_month - 1)
-with col_type:
-    type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
-
-with st.form(key='event_form', clear_on_submit=True):
-    title_input = st.text_input('일정 제목', placeholder='일정 제목을 입력하세요')
-
-    col_s, col_e, col_c = st.columns([2, 2, 1])
-    with col_s:
-        start_label = '날짜(시작일)' if type_select == '기간 일정' else '날짜'
-        start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
-    with col_e:
-        if type_select == '기간 일정':
-            end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=int(start_input))
-        else:
-            st.number_input('종료일(기간용)', min_value=0, max_value=0, value=0, disabled=True)
-            end_input = start_input
-    with col_c:
-        st.write("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
-        completed_check = st.checkbox('즉시 완료 처리')
-
-    add_button = st.form_submit_button('🚀 일정 추가하기', type='primary', use_container_width=True)
-
-    if add_button:
-        title = title_input.strip()
-
-        if not title:
-            st.error("⚠ 일정 제목을 입력해 주세요.")
-        elif type_select == '기간 일정' and start_input > end_input:
-            st.error("⚠ 시작일이 종료일보다 늦을 수 없습니다.")
-        else:
-            if type_select == '일반 일정(하루)':
-                st.session_state.my_daily_events.append({
-                    "year": in_year,
-                    "month": in_month,
-                    "day": int(start_input),
-                    "title": title,
-                    "completed": completed_check
-                })
-            else:
-                st.session_state.my_period_events.append({
-                    "year": in_year,
-                    "month": in_month,
-                    "start": int(start_input),
-                    "end": int(end_input),
-                    "title": title,
-                    "completed": completed_check
-                })
-            st.toast("일정이 성공적으로 추가되었습니다!")
-            st.rerun()
-
-st.divider()
-
-# -------------------------------------------------------------
-# 7. 메인 달력 출력
-# -------------------------------------------------------------
-render_calendar(selected_year, selected_month)
+st.title("📆 스마트
