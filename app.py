@@ -35,20 +35,21 @@ COMPLETED_COLOR = {"bg": "#ECEFF1", "text": "#546E7A"}
 def render_calendar(year, month):
     now = datetime.now()
 
+    # 기존 디자인을 유지하되, 요구사항에 맞춰 글씨 크기(font-size)만 아주 조금씩 상향 조정했습니다.
     style = """
     <style>
         .cal-table { border-collapse: collapse; width: 100%; font-family: 'Malgun Gothic', sans-serif; table-layout: fixed; margin-top: 15px;}
         .cal-table th, .cal-table td { border: 1px solid #e0e0e0; vertical-align: top; padding: 5px; height: 110px; }
-        .cal-header { font-size: 22px; font-weight: bold; text-align: center; margin-top: 10px; color: #333; }
-        .th-sun { color: red; text-align: center; font-weight: bold; background: #fafafa; }
-        .th-sat { color: blue; text-align: center; font-weight: bold; background: #fafafa; }
-        .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; }
-        .day-num { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
+        .cal-header { font-size: 24px; font-weight: bold; text-align: center; margin-top: 10px; color: #333; }
+        .th-sun { color: red; text-align: center; font-weight: bold; background: #fafafa; font-size: 15px; }
+        .th-sat { color: blue; text-align: center; font-weight: bold; background: #fafafa; font-size: 15px; }
+        .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; font-size: 15px; }
+        .day-num { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #333; } /* 14px -> 16px로 변경 */
         .today-box { background-color: #FFF9C4 !important; border: 2px solid #FBC02D !important; }
-        .event-completed { color: #2E7D32; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .event-pending { color: #424242; font-size: 12px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 16px; line-height: 16px; }
-        .period-box-empty { height: 22px; margin-bottom: 2px; border-radius: 3px; }
+        .event-completed { color: #2E7D32; font-size: 13px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;} /* 12px -> 13px로 변경 */
+        .event-pending { color: #424242; font-size: 13px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;} /* 12px -> 13px로 변경 */
+        .period-box { font-size: 12px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 18px; line-height: 18px; } /* 11px -> 12px로 변경 */
+        .period-box-empty { height: 24px; margin-bottom: 2px; border-radius: 3px; }
     </style>
     """
 
@@ -201,7 +202,6 @@ with st.form(key='event_form', clear_on_submit=True):
         start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
     with col_e:
         if type_select == '기간 일정':
-            # 핵심 수정: min_value를 1로 고정하여 복사/갱신 충돌 버그를 원천 차단하고 구조를 유지함
             end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=1)
         else:
             st.number_input('종료일(기간용)', min_value=0, max_value=0, value=0, disabled=True)
