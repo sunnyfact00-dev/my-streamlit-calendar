@@ -232,4 +232,4 @@ with st.form(key='event_form', clear_on_submit=True):
                     "year": in_year,
                     "month": in_month,
                     "day": int(start_input),
-                    "title": title,
+                    "title": title,})
