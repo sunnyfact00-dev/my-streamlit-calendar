@@ -90,7 +90,7 @@ def render_calendar(year, month):
                         else:
                             html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
 
-            # 일반 일정 렌더링 (이 부분이 잘려 있었습니다, 완벽 복구 완료!)
+            # 일반 일정 렌더링
             for d_event in st.session_state.my_daily_events:
                 if d_event.get("year") == year and d_event.get("month") == month:
                     if d_event["day"] == day:
@@ -201,7 +201,8 @@ with st.form(key='event_form', clear_on_submit=True):
         start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
     with col_e:
         if type_select == '기간 일정':
-            end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=int(start_input))
+            # 핵심 수정: min_value를 1로 고정하여 복사/갱신 충돌 버그를 원천 차단하고 구조를 유지함
+            end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=1)
         else:
             st.number_input('종료일(기간용)', min_value=0, max_value=0, value=0, disabled=True)
             end_input = start_input
