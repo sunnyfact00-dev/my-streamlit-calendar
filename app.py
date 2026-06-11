@@ -1,82 +1,77 @@
 import calendar
 from datetime import datetime
 import streamlit as st
-import uuid
 
 # 페이지 설정 (넓은 화면 모드)
-st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너")
+st.set_page_config(layout="wide")
 
 # -------------------------------------------------------------
 # 1. 글로벌 데이터 저장소 (Streamlit Session State 이용)
 # -------------------------------------------------------------
 if 'my_period_events' not in st.session_state:
-    st.session_state.my_period_events = []
+    st.session_state.my_period_events = []  # 기간 일정 저장소
 
 if 'my_daily_events' not in st.session_state:
-    st.session_state.my_daily_events = []
+    st.session_state.my_daily_events = []   # 일반 일정 저장소
 
 # -------------------------------------------------------------
 # 2. 색상 팔레트 정의 (기간별 구분을 위한 파스텔톤 7종)
 # -------------------------------------------------------------
 PERIOD_COLORS = [
-    {"bg": "#E3F2FD", "text": "#0D47A1"},
-    {"bg": "#E8F5E9", "text": "#1B5E20"},
-    {"bg": "#FFF3E0", "text": "#E65100"},
-    {"bg": "#F3E5F5", "text": "#4A148C"},
-    {"bg": "#FCE4EC", "text": "#880E4F"},
-    {"bg": "#E0F7FA", "text": "#006064"},
-    {"bg": "#FFFDE7", "text": "#F57F17"}
+    {"bg": "#E3F2FD", "text": "#0D47A1"},  # 블루
+    {"bg": "#E8F5E9", "text": "#1B5E20"},  # 그린
+    {"bg": "#FFF3E0", "text": "#E65100"},  # 오렌지
+    {"bg": "#F3E5F5", "text": "#4A148C"},  # 퍼플
+    {"bg": "#FCE4EC", "text": "#880E4F"},  # 핑크
+    {"bg": "#E0F7FA", "text": "#006064"},  # 시안
+    {"bg": "#FFFDE7", "text": "#F57F17"}   # 옐로우
 ]
 
 COMPLETED_COLOR = {"bg": "#ECEFF1", "text": "#546E7A"}
 
 # -------------------------------------------------------------
-# 3. 달력 렌더링 함수 (CSS 호환성 강화 버전)
+# 3. 달력 렌더링 함수
 # -------------------------------------------------------------
 def render_calendar(year, month):
     now = datetime.now()
 
-    # 호환성을 위해 폰트 지정을 안전하게 바꾸고 테이블이 깨지지 않도록 보완
     style = """
     <style>
-        .cal-wrapper { width: 100%; margin-top: 20px; margin-bottom: 20px; }
-        .cal-table { border-collapse: collapse; width: 100%; table-layout: fixed; background-color: #ffffff; }
-        .cal-table th, .cal-table td { border: 1px solid #dee2e6; vertical-align: top; padding: 8px; height: 120px; }
-        .cal-header { font-size: 26px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #212529; }
-        .th-sun { color: #dc3545; text-align: center; font-weight: bold; background: #f8f9fa; }
-        .th-sat { color: #0d6efd; text-align: center; font-weight: bold; background: #f8f9fa; }
-        .th-week { color: #212529; text-align: center; font-weight: bold; background: #f8f9fa; }
-        .day-num { font-weight: bold; font-size: 15px; margin-bottom: 8px; color: #212529; }
-        .today-box { background-color: #fff3cd !important; border: 2px solid #ffc107 !important; }
-        .event-completed { color: #6c757d; text-decoration: line-through; font-size: 12px; margin-top: 4px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .event-pending { color: #212529; font-size: 12px; margin-top: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
-        .period-box { font-size: 11px; padding: 4px 6px; margin-bottom: 3px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 20px; line-height: 12px; }
-        .period-box-empty { height: 20px; margin-bottom: 3px; border-radius: 4px; font-size: 11px; padding: 4px 6px; line-height: 12px; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+        .cal-table { border-collapse: collapse; width: 100%; font-family: 'Malgun Gothic', sans-serif; table-layout: fixed; margin-top: 15px;}
+        .cal-table th, .cal-table td { border: 1px solid #e0e0e0; vertical-align: top; padding: 5px; height: 110px; }
+        .cal-header { font-size: 22px; font-weight: bold; text-align: center; margin-top: 10px; color: #333; }
+        .th-sun { color: red; text-align: center; font-weight: bold; background: #fafafa; }
+        .th-sat { color: blue; text-align: center; font-weight: bold; background: #fafafa; }
+        .th-week { color: #333; text-align: center; font-weight: bold; background: #fafafa; }
+        .day-num { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
+        .today-box { background-color: #FFF9C4 !important; border: 2px solid #FBC02D !important; }
+        .event-completed { color: #2E7D32; font-size: 12px; margin-top: 3px; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .event-pending { color: #424242; font-size: 12px; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+        .period-box { font-size: 11px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; height: 16px; line-height: 16px; }
+        .period-box-empty { height: 22px; margin-bottom: 2px; border-radius: 3px; }
     </style>
     """
 
     cal = calendar.Calendar(firstweekday=6)
     month_days = cal.monthdayscalendar(year, month)
 
-    html = f'{style}<div class="cal-wrapper">'
-    html += f'<div class="cal-header">📅 {year}년 {month}월 캘린더</div>'
+    html = f'{style}<div class="cal-header">📅 {year}년 {month}월 캘린더</div>'
     html += '<table class="cal-table">'
-    html += '<thead><tr><th class="th-sun">일</th><th class="th-week">월</th><th class="th-week">화</th><th class="th-week">수</th><th class="th-week">목</th><th class="th-week">금</th><th class="th-sat">토</th></tr></thead>'
-    html += '<tbody>'
+    html += '<tr><th class="th-sun">일</th><th class="th-week">월</th><th class="th-week">화</th><th class="th-week">수</th><th class="th-week">목</th><th class="th-week">금</th><th class="th-sat">토</th></tr>'
 
     for week in month_days:
         html += '<tr>'
         for idx, day in enumerate(week):
             if day == 0:
-                html += '<td style="background-color:#f8f9fa;"></td>'
+                html += '<td style="background:#f9f9f9;"></td>'
                 continue
 
             is_today = (year == now.year and month == now.month and day == now.day)
             td_class = ' class="today-box"' if is_today else ''
 
             day_style = ""
-            if idx == 0: day_style = "color: #dc3545;"
-            elif idx == 6: day_style = "color: #0d6efd;"
+            if idx == 0: day_style = "color: red;"
+            elif idx == 6: day_style = "color: blue;"
 
             html += f'<td{td_class}><div class="day-num" style="{day_style}">{day}</div>'
 
@@ -84,34 +79,31 @@ def render_calendar(year, month):
             for p_idx, p_event in enumerate(st.session_state.my_period_events):
                 if p_event.get("year") == year and p_event.get("month") == month:
                     if p_event["start"] <= day <= p_event["end"]:
-                        if p_event.get("completed", False):
+                        if p_event["completed"]:
                             color_set = COMPLETED_COLOR
                         else:
                             color_set = PERIOD_COLORS[p_idx % len(PERIOD_COLORS)]
 
                         if day == p_event["start"]:
-                            display_title = f"✓ {p_event['title']}" if p_event.get("completed", False) else p_event["title"]
-                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
+                            display_title = f"✓ {p_event['title']}" if p_event["completed"] else p_event["title"]
+                            html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};">{display_title}</div>'
                         else:
-                            display_title = f"→ {p_event['title']}"
-                            html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
+                            html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]};"></div>'
 
             # 일반 일정 렌더링
             for d_event in st.session_state.my_daily_events:
                 if d_event.get("year") == year and d_event.get("month") == month:
                     if d_event["day"] == day:
-                        if d_event.get("completed", False):
-                            html += f'<div class="event-completed" title="{d_event["title"]}">✓ {d_event["title"]}</div>'
+                        if d_event["completed"]:
+                            html += f'<div class="event-completed">✓ {d_event["title"]}</div>'
                         else:
-                            html += f'<div class="event-pending" title="{d_event["title"]}">· {d_event["title"]}</div>'
+                            html += f'<div class="event-pending">· {d_event["title"]}</div>'
 
             html += '</td>'
         html += '</tr>'
-    
-    html += '</tbody></table></div>'
+    html += '</table>'
 
     st.markdown(html, unsafe_allow_html=True)
-
 
 # -------------------------------------------------------------
 # 4. 상단 대시보드 및 조회 제어 영역
@@ -136,4 +128,121 @@ with col_reset:
 
 st.divider()
 
-# 무조건 강제로 먼저
+# -------------------------------------------------------------
+# 5. 실시간 일정 관리 (토글 및 개별 삭제) 영역
+# -------------------------------------------------------------
+st.subheader(f"✅ {selected_year}년 {selected_month}월 일정 편집 및 관리")
+
+# 원본 리스트에서 해당 월의 아이템과 원래 인덱스를 함께 추출
+daily_items = [(idx, e) for idx, e in enumerate(st.session_state.my_daily_events) if e.get("year") == selected_year and e.get("month") == selected_month]
+period_items = [(idx, e) for idx, e in enumerate(st.session_state.my_period_events) if e.get("year") == selected_year and e.get("month") == selected_month]
+
+if not daily_items and not period_items:
+    st.info("이 달에 등록된 일정이 없습니다. 아래에서 일정을 추가해 보세요!")
+else:
+    # 일반 일정 출력 및 삭제
+    if daily_items:
+        st.markdown("**📌 일반 일정**")
+        for orig_idx, item in daily_items:
+            # 체크박스와 삭제 버튼을 한 줄에 배치하기 위해 컬럼 나누기
+            c1, c2 = st.columns([5, 1])
+            with c1:
+                new_val = st.checkbox(f"{item['day']}일 - {item['title']}", value=item["completed"], key=f"chk_d_{orig_idx}")
+                if new_val != item["completed"]:
+                    st.session_state.my_daily_events[orig_idx]["completed"] = new_val
+                    st.rerun()
+            with c2:
+                if st.button("🗑 삭제", key=f"del_d_{orig_idx}", use_container_width=True, type="secondary"):
+                    st.session_state.my_daily_events.pop(orig_idx)
+                    st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
+                    st.rerun()
+
+    # 간격 조정을 위한 공백
+    if daily_items and period_items: st.write("")
+
+    # 기간 일정 출력 및 삭제
+    if period_items:
+        st.markdown("**⏳ 기간 일정**")
+        for orig_idx, item in period_items:
+            c1, c2 = st.columns([5, 1])
+            with c1:
+                new_val = st.checkbox(f"{item['start']}일 ~ {item['end']}일 - {item['title']}", value=item["completed"], key=f"chk_p_{orig_idx}")
+                if new_val != item["completed"]:
+                    st.session_state.my_period_events[orig_idx]["completed"] = new_val
+                    st.rerun()
+            with c2:
+                if st.button("🗑 삭제", key=f"del_p_{orig_idx}", use_container_width=True, type="secondary"):
+                    st.session_state.my_period_events.pop(orig_idx)
+                    st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
+                    st.rerun()
+
+st.divider()
+
+# -------------------------------------------------------------
+# 6. 새 일정 등록 영역 (Form 컴포넌트)
+# -------------------------------------------------------------
+st.subheader("➕ 새 일정 등록하기")
+
+_, last_day = calendar.monthrange(selected_year, selected_month)
+
+col_iy, col_im, col_type = st.columns([1, 1, 2])
+with col_iy:
+    in_year = st.selectbox("등록 연도", list(range(2020, 2031)), index=list(range(2020, 2031)).index(selected_year))
+with col_im:
+    in_month = st.selectbox("등록 월", list(range(1, 13)), index=selected_month - 1)
+with col_type:
+    type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
+
+with st.form(key='event_form', clear_on_submit=True):
+    title_input = st.text_input('일정 제목', placeholder='일정 제목을 입력하세요')
+
+    col_s, col_e, col_c = st.columns([2, 2, 1])
+    with col_s:
+        start_label = '날짜(시작일)' if type_select == '기간 일정' else '날짜'
+        start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
+    with col_e:
+        if type_select == '기간 일정':
+            end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=int(start_input))
+        else:
+            st.number_input('종료일(기간용)', min_value=0, max_value=0, value=0, disabled=True)
+            end_input = start_input
+    with col_c:
+        st.write("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+        completed_check = st.checkbox('즉시 완료 처리')
+
+    add_button = st.form_submit_button('🚀 일정 추가하기', type='primary', use_container_width=True)
+
+    if add_button:
+        title = title_input.strip()
+
+        if not title:
+            st.error("⚠ 일정 제목을 입력해 주세요.")
+        elif type_select == '기간 일정' and start_input > end_input:
+            st.error("⚠ 시작일이 종료일보다 늦을 수 없습니다.")
+        else:
+            if type_select == '일반 일정(하루)':
+                st.session_state.my_daily_events.append({
+                    "year": in_year,
+                    "month": in_month,
+                    "day": int(start_input),
+                    "title": title,
+                    "completed": completed_check
+                })
+            else:
+                st.session_state.my_period_events.append({
+                    "year": in_year,
+                    "month": in_month,
+                    "start": int(start_input),
+                    "end": int(end_input),
+                    "title": title,
+                    "completed": completed_check
+                })
+            st.toast("일정이 성공적으로 추가되었습니다!")
+            st.rerun()
+
+st.divider()
+
+# -------------------------------------------------------------
+# 7. 메인 달력 출력
+# -------------------------------------------------------------
+render_calendar(selected_year, selected_month)
