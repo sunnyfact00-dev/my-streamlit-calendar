@@ -1,7 +1,7 @@
 import calendar
 from datetime import datetime
 import streamlit as st
-import uuid
+import uuid  # 고유 ID 생성을 위한 모듈 추가
 
 # 페이지 설정 (넓은 화면 모드)
 st.set_page_config(layout="wide", page_title="스마트 일정 관리 플래너")
@@ -89,6 +89,7 @@ def render_calendar(year, month):
                             display_title = f"✓ {p_event['title']}" if p_event["completed"] else p_event["title"]
                             html += f'<div class="period-box" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
                         else:
+                            # 이어지는 날에도 연하게 글자를 보방하여 가독성 업그레이드
                             display_title = f"→ {p_event['title']}"
                             html += f'<div class="period-box-empty" style="background-color: {color_set["bg"]}; color: {color_set["text"]};" title="{p_event["title"]}">{display_title}</div>'
 
@@ -106,7 +107,6 @@ def render_calendar(year, month):
     html += '</table>'
 
     st.markdown(html, unsafe_allow_html=True)
-
 
 # -------------------------------------------------------------
 # 4. 상단 대시보드 및 조회 제어 영역
@@ -131,16 +131,12 @@ with col_reset:
 
 st.divider()
 
-# ✨ 개선: 사용자가 일정을 바로 확인할 수 있도록 캘린더 화면을 상단에 먼저 렌더링합니다.
-render_calendar(selected_year, selected_month)
-
-st.divider()
-
 # -------------------------------------------------------------
 # 5. 실시간 일정 관리 (토글 및 개별 삭제) 영역
 # -------------------------------------------------------------
 st.subheader(f"✅ {selected_year}년 {selected_month}월 일정 편집 및 관리")
 
+# 필터링 대상 리스트 추출 (id 또는 객체 자체를 매핑)
 daily_items = [e for e in st.session_state.my_daily_events if e.get("year") == selected_year and e.get("month") == selected_month]
 period_items = [e for e in st.session_state.my_period_events if e.get("year") == selected_year and e.get("month") == selected_month]
 
@@ -158,6 +154,7 @@ else:
                     item["completed"] = new_val
                     st.rerun()
             with c2:
+                # pop(idx) 대신 리스트에서 객체를 직접 안전하게 remove
                 if st.button("🗑 삭제", key=f"del_d_{item['id']}", use_container_width=True, type="secondary"):
                     st.session_state.my_daily_events.remove(item)
                     st.toast(f"'{item['title']}' 일정이 삭제되었습니다.")
@@ -184,20 +181,20 @@ else:
 st.divider()
 
 # -------------------------------------------------------------
-# 6. 새 일정 등록 영역 (완성본)
+# 6. 새 일정 등록 영역 (Form 구조 수정)
 # -------------------------------------------------------------
 st.subheader("➕ 새 일정 등록하기")
+
+_, last_day = calendar.monthrange(selected_year, selected_month)
 
 col_iy, col_im, col_type = st.columns([1, 1, 2])
 with col_iy:
     in_year = st.selectbox("등록 연도", list(range(2020, 2031)), index=list(range(2020, 2031)).index(selected_year))
 with col_im:
-    in_month = st.selectbox("등록 월", list(range(1, 13)), index=in_month_idx := in_month - 1 if 'in_month' in locals() else selected_month - 1)
+    in_month = st.selectbox("등록 월", list(range(1, 13)), index=selected_month - 1)
 with col_type:
+    # Form 외부에 두어 사용자가 선택 시 즉시 하단 입력폼 컴포넌트가 반응하도록 함
     type_select = st.selectbox('일정 종류', ['일반 일정(하루)', '기간 일정'])
-
-# 등록 연도와 월에 맞추어 유동적으로 말일(last_day)을 계산합니다.
-_, last_day = calendar.monthrange(in_year, in_month)
 
 with st.form(key='event_form', clear_on_submit=True):
     title_input = st.text_input('일정 제목', placeholder='일정 제목을 입력하세요')
@@ -208,7 +205,7 @@ with st.form(key='event_form', clear_on_submit=True):
         start_input = st.number_input(start_label, min_value=1, max_value=last_day, value=1)
     with col_e:
         if type_select == '기간 일정':
-            end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=1)
+            end_input = st.number_input('종료일(기간용)', min_value=1, max_value=last_day, value=int(start_input))
         else:
             st.number_input('종료일(기간용)', min_value=0, max_value=0, value=0, disabled=True)
             end_input = start_input
@@ -218,7 +215,6 @@ with st.form(key='event_form', clear_on_submit=True):
 
     add_button = st.form_submit_button('🚀 일정 추가하기', type='primary', use_container_width=True)
 
-    # 버튼 클릭 시 데이터 저장 프로세스 마저 구현
     if add_button:
         title = title_input.strip()
 
@@ -227,6 +223,7 @@ with st.form(key='event_form', clear_on_submit=True):
         elif type_select == '기간 일정' and start_input > end_input:
             st.error("⚠ 시작일이 종료일보다 늦을 수 없습니다.")
         else:
+            # 안전한 조작을 위해 고유 uuid 생성하여 딕셔너리에 추가
             event_id = str(uuid.uuid4())
             
             if type_select == '일반 일정(하루)':
@@ -236,18 +233,3 @@ with st.form(key='event_form', clear_on_submit=True):
                     "month": in_month,
                     "day": int(start_input),
                     "title": title,
-                    "completed": completed_check
-                })
-            else:
-                st.session_state.my_period_events.append({
-                    "id": event_id,
-                    "year": in_year,
-                    "month": in_month,
-                    "start": int(start_input),
-                    "end": int(end_input),
-                    "title": title,
-                    "completed": completed_check
-                })
-            
-            st.toast(f"🎉 '{title}' 일정이 성공적으로 추가되었습니다!")
-            st.rerun()
